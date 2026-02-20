@@ -84,7 +84,7 @@ export default function TransactionsPage() {
 
       <BentoCard className="overflow-hidden p-0">
         <div className="p-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 flex items-center justify-between">
-          <div className="relative w-72">
+          <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
             <input
               className="w-full pl-10 pr-4 py-2 rounded-lg bg-white dark:bg-background-dark border border-slate-200 dark:border-white/10 text-sm outline-none focus:border-brand transition-all"
