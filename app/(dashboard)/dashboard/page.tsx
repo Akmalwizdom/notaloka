@@ -4,79 +4,17 @@ import Link from "next/link";
 import { BentoCard } from "@/components/ui/bento-card";
 import {
   TrendingUp,
-  Users,
   ShoppingBag,
   DollarSign,
   Clock,
   ChevronRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { Loader2, AlertCircle } from "lucide-react";
 
-const stats = [
-  {
-    label: "Total Revenue",
-    value: "Rp 12.850.000",
-    change: "+12.5%",
-    icon: DollarSign,
-    trend: "up",
-  },
-  {
-    label: "Total Orders",
-    value: "854",
-    change: "+8.2%",
-    icon: ShoppingBag,
-    trend: "up",
-  },
-  {
-    label: "Active Customers",
-    value: "1,240",
-    change: "-2.4%",
-    icon: Users,
-    trend: "down",
-  },
-  {
-    label: "Avg. Order Value",
-    value: "Rp 150.000",
-    change: "+4.1%",
-    icon: TrendingUp,
-    trend: "up",
-  },
-];
-
-const transactions = [
-  {
-    id: "TRX-8821",
-    customer: "Dian Saputra",
-    items: 4,
-    total: "Rp 450.000",
-    status: "Completed",
-    time: "2 mins ago",
-  },
-  {
-    id: "TRX-8820",
-    customer: "Ani Wijaya",
-    items: 2,
-    total: "Rp 120.000",
-    status: "Processing",
-    time: "15 mins ago",
-  },
-  {
-    id: "TRX-8819",
-    customer: "Budi Setiawan",
-    items: 1,
-    total: "Rp 75.000",
-    status: "Completed",
-    time: "1 hour ago",
-  },
-  {
-    id: "TRX-8818",
-    customer: "Siska Putri",
-    items: 3,
-    total: "Rp 320.000",
-    status: "Cancelled",
-    time: "3 hours ago",
-  },
-];
+// Mock data removed
 
 const container = {
   hidden: { opacity: 0 },
@@ -94,6 +32,84 @@ const item = {
 };
 
 export default function DashboardPage() {
+  const {
+    data: summary,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["report-summary"],
+    queryFn: () =>
+      apiClient.get<{
+        totalRevenue: number;
+        revenueChange: number;
+        totalOrders: number;
+        ordersChange: number;
+        avgOrderValue: number;
+        recentTransactions: {
+          id: string;
+          paymentMethod: string;
+          totalAmount: number;
+          paymentStatus: string;
+          items: {
+            productId: string;
+            quantity: number;
+            price: number;
+          }[];
+        }[];
+      }>("/api/v1/reports"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="flex h-[400px] flex-col items-center justify-center gap-2">
+        <AlertCircle className="size-8 text-rose-500" />
+        <p className="text-slate-500">Failed to load dashboard data</p>
+      </div>
+    );
+  }
+
+  // At this point summary is guaranteed to be defined
+  const data = summary;
+
+  const stats = [
+    {
+      label: "Total Revenue",
+      value: `Rp ${new Intl.NumberFormat("id-ID").format(data.totalRevenue)}`,
+      change: `${data.revenueChange > 0 ? "+" : ""}${data.revenueChange.toFixed(1)}%`,
+      icon: DollarSign,
+      trend: data.revenueChange >= 0 ? "up" : "down",
+    },
+    {
+      label: "Total Orders",
+      value: data.totalOrders.toString(),
+      change: `${data.ordersChange > 0 ? "+" : ""}${data.ordersChange.toFixed(1)}%`,
+      icon: ShoppingBag,
+      trend: data.ordersChange >= 0 ? "up" : "down",
+    },
+    {
+      label: "Sync Status",
+      value: "Healthy",
+      change: "Live",
+      icon: Clock,
+      trend: "up",
+    },
+    {
+      label: "Avg. Order Value",
+      value: `Rp ${new Intl.NumberFormat("id-ID").format(data.avgOrderValue)}`,
+      change: "0.0%",
+      icon: TrendingUp,
+      trend: "up",
+    },
+  ];
+
   return (
     <div className="space-y-8">
       {/* Metrics Grid */}
@@ -152,7 +168,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-white/5">
-            {transactions.map((trx) => (
+            {data.recentTransactions.map((trx) => (
               <div
                 key={trx.id}
                 className="py-4 first:pt-0 last:pb-0 flex items-center justify-between group"
@@ -163,28 +179,29 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">
-                      {trx.customer}
+                      {trx.paymentMethod.toUpperCase()}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {trx.id} • {trx.items} items
+                      {trx.id} • {trx.items?.length || 0} items
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-black text-slate-900 dark:text-white">
-                    {trx.total}
+                    Rp {new Intl.NumberFormat("id-ID").format(trx.totalAmount)}
                   </p>
                   <p
                     className={cn(
                       "text-[10px] font-bold uppercase tracking-wider",
-                      trx.status === "Completed"
+                      trx.paymentStatus === "settlement" ||
+                        trx.paymentStatus === "completed"
                         ? "text-emerald-500"
-                        : trx.status === "Processing"
+                        : trx.paymentStatus === "pending"
                           ? "text-amber-500"
                           : "text-rose-500",
                     )}
                   >
-                    {trx.status}
+                    {trx.paymentStatus}
                   </p>
                 </div>
               </div>
