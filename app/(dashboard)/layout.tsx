@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useState } from "react";
+import { useSync } from "@/hooks/use-sync";
 
 export default function DashboardLayout({
   children,
@@ -10,6 +11,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  useSync(); // Initialize sync globally within dashboard
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
