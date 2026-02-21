@@ -15,81 +15,35 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { Loader2, AlertCircle } from "lucide-react";
+import { toast } from "sonner"; // Assuming sonner is available or easily added
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
-  category: string;
-  image: string;
+  category: { name: string };
+  image?: string;
 }
 
 interface CartItem extends Product {
   quantity: number;
 }
 
-const products: Product[] = [
-  {
-    id: 1,
-    name: "Kopi Kenangan Mantan",
-    price: 24000,
-    category: "Beverage",
-    image: "☕",
-  },
-  {
-    id: 2,
-    name: "Ice Caramel Latte",
-    price: 32000,
-    category: "Beverage",
-    image: "🥤",
-  },
-  {
-    id: 3,
-    name: "Red Velvet Cake",
-    price: 28000,
-    category: "Bakery",
-    image: "🍰",
-  },
-  {
-    id: 4,
-    name: "French Fries Large",
-    price: 18000,
-    category: "Snack",
-    image: "🍟",
-  },
-  {
-    id: 5,
-    name: "Plain Croissant",
-    price: 15000,
-    category: "Bakery",
-    image: "🥐",
-  },
-  {
-    id: 6,
-    name: "Matcha Latte",
-    price: 26000,
-    category: "Beverage",
-    image: "🍵",
-  },
-  {
-    id: 7,
-    name: "Chocolate Muffin",
-    price: 22000,
-    category: "Bakery",
-    image: "🧁",
-  },
-  {
-    id: 8,
-    name: "Mineral Water",
-    price: 8000,
-    category: "Beverage",
-    image: "💧",
-  },
-];
+// Static mock products removed
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("QRIS");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => apiClient.get<Product[]>("/api/v1/products"),
+  });
 
   const addToCart = (product: Product) => {
     setCart((prev) => {
@@ -105,7 +59,7 @@ export default function CheckoutPage() {
     });
   };
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (id: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) => {
@@ -117,6 +71,58 @@ export default function CheckoutPage() {
         })
         .filter((item) => item.quantity > 0),
     );
+  };
+
+  const handleProcessPayment = async () => {
+    if (cart.length === 0) return;
+
+    setIsProcessing(true);
+    try {
+      const payload = {
+        items: cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        paymentMethod: paymentMethod.toLowerCase(),
+      };
+
+      const result = await apiClient.post<any>("/api/v1/checkout", payload);
+
+      if (paymentMethod === "QRIS" || paymentMethod === "Card") {
+        if (result.snapToken) {
+          // @ts-ignore
+          window.snap.pay(result.snapToken, {
+            onSuccess: (result: any) => {
+              toast.success("Payment successful!");
+              setCart([]);
+              setIsProcessing(false);
+            },
+            onPending: (result: any) => {
+              toast.info("Payment is pending.");
+              setCart([]);
+              setIsProcessing(false);
+            },
+            onError: (result: any) => {
+              toast.error("Payment failed.");
+              setIsProcessing(false);
+            },
+            onClose: () => {
+              toast.warning("Payment popup closed.");
+              setIsProcessing(false);
+            },
+          });
+        }
+      } else {
+        toast.success("Transaction recorded (Cash)");
+        setCart([]);
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      toast.error("Checkout failed. Please try again.");
+      console.error(error);
+      setIsProcessing(false);
+    }
   };
 
   const subtotal = cart.reduce(
@@ -215,16 +221,33 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <PaymentMethod icon={Banknote} label="Cash" />
-          <PaymentMethod icon={CreditCard} label="Card" />
-          <PaymentMethod icon={QrCode} label="QRIS" />
+          <PaymentMethod
+            icon={Banknote}
+            label="Cash"
+            selected={paymentMethod === "Cash"}
+            onClick={() => setPaymentMethod("Cash")}
+          />
+          <PaymentMethod
+            icon={CreditCard}
+            label="Card"
+            selected={paymentMethod === "Card"}
+            onClick={() => setPaymentMethod("Card")}
+          />
+          <PaymentMethod
+            icon={QrCode}
+            label="QRIS"
+            selected={paymentMethod === "QRIS"}
+            onClick={() => setPaymentMethod("QRIS")}
+          />
         </div>
 
         <button
-          disabled={cart.length === 0}
-          className="w-full py-4 bg-brand text-white rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-[1.02] transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:scale-100"
+          onClick={handleProcessPayment}
+          disabled={cart.length === 0 || isProcessing}
+          className="w-full py-4 bg-brand text-white rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-[1.02] transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:scale-100 flex items-center justify-center gap-2"
         >
-          Process Payment
+          {isProcessing && <Loader2 className="size-5 animate-spin" />}
+          {isProcessing ? "Processing..." : "Process Payment"}
         </button>
       </div>
     </BentoCard>
@@ -264,27 +287,33 @@ export default function CheckoutPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className="group p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-brand transition-all text-left flex flex-col gap-3 active:scale-95"
-              >
-                <div className="aspect-square rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">
-                  {product.image}
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
-                    {product.name}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Rp {product.price.toLocaleString()}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="h-40 flex items-center justify-center">
+              <Loader2 className="size-8 animate-spin text-brand" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              {products?.map((product) => (
+                <button
+                  key={product.id}
+                  onClick={() => addToCart(product)}
+                  className="group p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-brand transition-all text-left flex flex-col gap-3 active:scale-95"
+                >
+                  <div className="aspect-square rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">
+                    {product.image || "☕"}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
+                      {product.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Rp {product.price.toLocaleString()}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -342,12 +371,24 @@ export default function CheckoutPage() {
 function PaymentMethod({
   icon: Icon,
   label,
+  selected,
+  onClick,
 }: {
   icon: LucideIcon;
   label: string;
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-slate-200 dark:border-white/10 hover:border-brand hover:text-brand transition-all text-slate-500">
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all",
+        selected
+          ? "border-brand bg-brand/5 text-brand"
+          : "border-slate-200 dark:border-white/10 text-slate-500 hover:border-brand/50",
+      )}
+    >
       <Icon className="size-5" />
       <span className="text-[10px] font-bold uppercase tracking-widest">
         {label}

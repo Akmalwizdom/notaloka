@@ -11,51 +11,50 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { Loader2 } from "lucide-react";
 
-const products = [
-  {
-    id: "P-001",
-    name: "Kopi Kenangan Mantan",
-    category: "Beverage",
-    price: "Rp 24.000",
-    stock: 45,
-    status: "In Stock",
-  },
-  {
-    id: "P-002",
-    name: "French Fries Large",
-    category: "Snack",
-    price: "Rp 18.000",
-    stock: 12,
-    status: "Low Stock",
-  },
-  {
-    id: "P-003",
-    name: "Ice Caramel Latte",
-    category: "Beverage",
-    price: "Rp 32.000",
-    stock: 0,
-    status: "Out of Stock",
-  },
-  {
-    id: "P-004",
-    name: "Red Velvet Cake",
-    category: "Bakery",
-    price: "Rp 28.000",
-    stock: 24,
-    status: "In Stock",
-  },
-  {
-    id: "P-005",
-    name: "Plain Croissant",
-    category: "Bakery",
-    price: "Rp 15.000",
-    stock: 8,
-    status: "Low Stock",
-  },
-];
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  stock: number;
+  category?: {
+    name: string;
+  };
+}
+
+// Static mock data removed
 
 export default function InventoryPage() {
+  const {
+    data: products,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => apiClient.get<Product[]>("/api/v1/products"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-[400px] flex-col items-center justify-center gap-2">
+        <AlertCircle className="size-8 text-rose-500" />
+        <p className="text-slate-500">Failed to load products</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -90,7 +89,7 @@ export default function InventoryPage() {
             />
           </div>
           <p className="text-xs text-slate-500 font-medium">
-            Showing 5 of 124 products
+            Showing {products?.length || 0} products
           </p>
         </div>
 
@@ -111,81 +110,90 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {products.map((product) => (
-                <tr
-                  key={product.id}
-                  className="hover:bg-slate-50/50 dark:hover:bg-white/2 transition-colors group"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400">
-                        <Package className="size-5" />
+              {products?.map((product) => {
+                const stockStatus =
+                  product.stock > 20
+                    ? "In Stock"
+                    : product.stock > 0
+                      ? "Low Stock"
+                      : "Out of Stock";
+
+                return (
+                  <tr
+                    key={product.id}
+                    className="hover:bg-slate-50/50 dark:hover:bg-white/2 transition-colors group"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400">
+                          <Package className="size-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {product.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter tabular-nums">
+                            {product.sku || product.id}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {product.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter tabular-nums">
-                          {product.id}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {product.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-black text-slate-900 dark:text-white">
-                    {product.price}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold">
-                        {product.stock} pcs
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {product.category?.name || "Uncategorized"}
                       </span>
-                      <div className="w-24 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full",
-                            product.stock > 20
-                              ? "bg-emerald-500"
-                              : product.stock > 0
-                                ? "bg-amber-500"
-                                : "bg-rose-500",
-                          )}
-                          style={{
-                            width: `${Math.min((product.stock / 50) * 100, 100)}%`,
-                          }}
-                        />
+                    </td>
+                    <td className="px-6 py-4 text-sm font-black text-slate-900 dark:text-white">
+                      Rp {new Intl.NumberFormat("id-ID").format(product.price)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold">
+                          {product.stock} pcs
+                        </span>
+                        <div className="w-24 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full",
+                              product.stock > 20
+                                ? "bg-emerald-500"
+                                : product.stock > 0
+                                  ? "bg-amber-500"
+                                  : "bg-rose-500",
+                            )}
+                            style={{
+                              width: `${Math.min((product.stock / 50) * 100, 100)}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div
-                      className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                        product.status === "In Stock" &&
-                          "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-                        product.status === "Low Stock" &&
-                          "bg-amber-500/10 text-amber-500 border-amber-500/20",
-                        product.status === "Out of Stock" &&
-                          "bg-rose-500/10 text-rose-500 border-rose-500/20",
-                      )}
-                    >
-                      {product.status === "Out of Stock" && (
-                        <AlertCircle className="size-3" />
-                      )}
-                      {product.status}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
-                      <MoreHorizontal className="size-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                          stockStatus === "In Stock" &&
+                            "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                          stockStatus === "Low Stock" &&
+                            "bg-amber-500/10 text-amber-500 border-amber-500/20",
+                          stockStatus === "Out of Stock" &&
+                            "bg-rose-500/10 text-rose-500 border-rose-500/20",
+                        )}
+                      >
+                        {stockStatus === "Out of Stock" && (
+                          <AlertCircle className="size-3" />
+                        )}
+                        {stockStatus}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -202,7 +210,7 @@ export default function InventoryPage() {
               Next
             </button>
           </div>
-          <p className="text-xs text-slate-400">Page 1 of 25</p>
+          <p className="text-xs text-slate-400">Page 1 of 1</p>
         </div>
       </BentoCard>
     </div>
