@@ -10,17 +10,41 @@ export class ApiError extends Error {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  const data = await response.json();
+  const raw = await response.text();
+  let data: { data?: T; error?: { message?: string; code?: string } } | null = null;
 
-  if (!response.ok) {
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    if (!response.ok) {
+      throw new ApiError(
+        "Server returned a non-JSON error response",
+        response.status
+      );
+    }
+
     throw new ApiError(
-      data.error?.message || response.statusText,
-      response.status,
-      data.error?.code
+      "Server returned an invalid response format",
+      response.status
     );
   }
 
-  return data.data;
+  if (!response.ok) {
+    throw new ApiError(
+      data?.error?.message || response.statusText,
+      response.status,
+      data?.error?.code
+    );
+  }
+
+  if (!data || typeof data !== "object" || !("data" in data)) {
+    throw new ApiError(
+      "Server response is missing expected data field",
+      response.status
+    );
+  }
+
+  return data.data as T;
 }
 
 export const apiClient = {
