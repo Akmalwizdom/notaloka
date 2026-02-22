@@ -63,8 +63,10 @@ export const errorResponse = (error: unknown) => {
   );
 };
 
-export const wrapHandler = (handler: (req: Request, ...args: unknown[]) => Promise<Response>) => {
-  return async (req: Request, ...args: unknown[]) => {
+export const wrapHandler = <T extends unknown[]>(
+  handler: (req: Request, ...args: T) => Promise<Response>
+) => {
+  return async (req: Request, ...args: T) => {
     try {
       return await handler(req, ...args);
     } catch (error) {
