@@ -82,17 +82,17 @@ export default function DashboardPage() {
   const stats = [
     {
       label: "Total Revenue",
-      value: `Rp ${new Intl.NumberFormat("id-ID").format(data.totalRevenue)}`,
-      change: `${data.revenueChange > 0 ? "+" : ""}${data.revenueChange.toFixed(1)}%`,
+      value: `Rp ${new Intl.NumberFormat("id-ID").format(data.totalRevenue ?? 0)}`,
+      change: `${data.revenueChange > 0 ? "+" : ""}${(data.revenueChange ?? 0).toFixed(1)}%`,
       icon: DollarSign,
-      trend: data.revenueChange >= 0 ? "up" : "down",
+      trend: (data.revenueChange ?? 0) >= 0 ? "up" : "down",
     },
     {
       label: "Total Orders",
-      value: data.totalOrders.toString(),
-      change: `${data.ordersChange > 0 ? "+" : ""}${data.ordersChange.toFixed(1)}%`,
+      value: (data.totalOrders ?? 0).toString(),
+      change: `${data.ordersChange > 0 ? "+" : ""}${(data.ordersChange ?? 0).toFixed(1)}%`,
       icon: ShoppingBag,
-      trend: data.ordersChange >= 0 ? "up" : "down",
+      trend: (data.ordersChange ?? 0) >= 0 ? "up" : "down",
     },
     {
       label: "Sync Status",
@@ -103,7 +103,7 @@ export default function DashboardPage() {
     },
     {
       label: "Avg. Order Value",
-      value: `Rp ${new Intl.NumberFormat("id-ID").format(data.avgOrderValue)}`,
+      value: `Rp ${new Intl.NumberFormat("id-ID").format(data.avgOrderValue ?? 0)}`,
       change: "0.0%",
       icon: TrendingUp,
       trend: "up",
@@ -168,7 +168,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-white/5">
-            {data.recentTransactions.map((trx) => (
+            {(data.recentTransactions ?? []).map((trx) => (
               <div
                 key={trx.id}
                 className="py-4 first:pt-0 last:pb-0 flex items-center justify-between group"

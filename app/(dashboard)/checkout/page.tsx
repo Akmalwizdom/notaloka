@@ -18,7 +18,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { Loader2, AlertCircle } from "lucide-react";
-import { toast } from "sonner"; // Assuming sonner is available or easily added
+import { toast } from "sonner";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -167,8 +168,17 @@ export default function CheckoutPage() {
                 className="flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-lg italic uppercase">
-                    {item.image}
+                  <div className="size-10 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-lg italic uppercase overflow-hidden relative">
+                    {item.image?.startsWith("http") ? (
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      item.image || "☕"
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800 dark:text-white">
@@ -299,8 +309,17 @@ export default function CheckoutPage() {
                   onClick={() => addToCart(product)}
                   className="group p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-brand transition-all text-left flex flex-col gap-3 active:scale-95"
                 >
-                  <div className="aspect-square rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">
-                    {product.image || "☕"}
+                  <div className="aspect-square rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform overflow-hidden relative">
+                    {product.image?.startsWith("http") ? (
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      product.image || "☕"
+                    )}
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">

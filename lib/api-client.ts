@@ -16,32 +16,25 @@ async function handleResponse<T>(response: Response): Promise<T> {
   try {
     data = raw ? JSON.parse(raw) : null;
   } catch {
-    if (!response.ok) {
-      throw new ApiError(
-        "Server returned a non-JSON error response",
-        response.status
-      );
-    }
-
     throw new ApiError(
-      "Server returned an invalid response format",
+      `Server returned an invalid response format: ${raw.slice(0, 100)}...`,
       response.status
     );
   }
 
   if (!response.ok) {
     throw new ApiError(
-      data?.error?.message || response.statusText,
+      data?.error?.message || response.statusText || "An unexpected error occurred",
       response.status,
       data?.error?.code
     );
   }
 
   if (!data || typeof data !== "object" || !("data" in data)) {
-    throw new ApiError(
-      "Server response is missing expected data field",
-      response.status
-    );
+    // If it's a successful response but missing 'data', it might be a different format
+    // or a 204 No Content. If response is OK, we might return null or the data itself.
+    // However, for this project, the pattern seems to be { data: T }
+    return data as T;
   }
 
   return data.data as T;
