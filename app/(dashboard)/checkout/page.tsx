@@ -40,6 +40,8 @@ export default function CheckoutPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("QRIS");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -88,23 +90,23 @@ export default function CheckoutPage() {
         paymentMethod: paymentMethod.toLowerCase(),
       };
 
-      const result = await apiClient.post<any>("/api/v1/checkout", payload);
+      const result = await apiClient.post<{ snapToken?: string }>("/api/v1/checkout", payload);
 
       if (paymentMethod === "QRIS" || paymentMethod === "Card") {
         if (result.snapToken) {
-          // @ts-ignore
+          // @ts-expect-error Snap is provided by Midtrans script in layout/head
           window.snap.pay(result.snapToken, {
-            onSuccess: (result: any) => {
+            onSuccess: () => {
               toast.success("Payment successful!");
               setCart([]);
               setIsProcessing(false);
             },
-            onPending: (result: any) => {
+            onPending: () => {
               toast.info("Payment is pending.");
               setCart([]);
               setIsProcessing(false);
             },
-            onError: (result: any) => {
+            onError: () => {
               toast.error("Payment failed.");
               setIsProcessing(false);
             },
@@ -125,6 +127,15 @@ export default function CheckoutPage() {
       setIsProcessing(false);
     }
   };
+
+  const filteredProducts = products?.filter((product) => {
+    const matchesCategory =
+      selectedCategory === "All" || product.category.name === selectedCategory;
+    const matchesSearch = product.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const subtotal = cart.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -274,18 +285,21 @@ export default function CheckoutPage() {
               className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm outline-none focus:border-brand transition-all"
               placeholder="Search products or scan..."
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button className="absolute right-3 top-1/2 -translate-y-1/2 text-brand">
               <Scan className="size-4" />
             </button>
           </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {["All", "Beverage", "Snack", "Bakery"].map((cat) => (
+            {["All", "Food", "Drink"].map((cat) => (
               <button
                 key={cat}
+                onClick={() => setSelectedCategory(cat)}
                 className={cn(
                   "px-4 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap",
-                  cat === "All"
+                  cat === selectedCategory
                     ? "bg-brand text-white border-brand"
                     : "bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-brand/50",
                 )}
@@ -303,34 +317,41 @@ export default function CheckoutPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {products?.map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="group p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-brand transition-all text-left flex flex-col gap-3 active:scale-95"
-                >
-                  <div className="aspect-square rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform overflow-hidden relative">
-                    {product.image?.startsWith("http") ? (
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      product.image || "☕"
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
-                      {product.name}
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Rp {product.price.toLocaleString()}
-                    </p>
-                  </div>
-                </button>
-              ))}
+              {filteredProducts?.length === 0 ? (
+                <div className="col-span-full h-40 flex flex-col items-center justify-center text-center opacity-40">
+                  <AlertCircle className="size-8 mb-2" />
+                  <p className="text-sm">No products found</p>
+                </div>
+              ) : (
+                filteredProducts?.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className="group p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-brand transition-all text-left flex flex-col gap-3 active:scale-95"
+                  >
+                    <div className="aspect-square rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform overflow-hidden relative">
+                      {product.image?.startsWith("http") ? (
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        product.image || "☕"
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Rp {product.price.toLocaleString()}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>

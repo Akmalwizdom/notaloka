@@ -61,7 +61,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
+      <div className="flex h-100 items-center justify-center">
         <Loader2 className="size-8 animate-spin text-brand" />
       </div>
     );
@@ -69,7 +69,7 @@ export default function DashboardPage() {
 
   if (error || !summary) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center gap-2">
+      <div className="flex h-100 flex-col items-center justify-center gap-2">
         <AlertCircle className="size-8 text-rose-500" />
         <p className="text-slate-500">Failed to load dashboard data</p>
       </div>
