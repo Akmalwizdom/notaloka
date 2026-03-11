@@ -38,14 +38,34 @@ export const POST = wrapHandler(async (req: Request) => {
   return successResponse(transaction, 201);
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const GET = wrapHandler(async (_req: Request) => {
+export const GET = wrapHandler(async (req: Request) => {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
   if (!session) throw new AppError("Unauthorized", 401, "UNAUTHORIZED");
 
-  const transactions = await TransactionService.getHistory(session.user.id);
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get("q");
+  const status = searchParams.get("status");
+  const paymentMethod = searchParams.get("paymentMethod");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  const filters: {
+    query?: string;
+    status?: string;
+    paymentMethod?: string;
+    from?: string;
+    to?: string;
+  } = {
+    query: query || undefined,
+    status: status && status !== "all" ? status : undefined,
+    paymentMethod: paymentMethod && paymentMethod !== "all" ? paymentMethod : undefined,
+    from: from || undefined,
+    to: to || undefined,
+  };
+
+  const transactions = await TransactionService.getHistory(session.user.id, filters);
   return successResponse(transactions);
 });
