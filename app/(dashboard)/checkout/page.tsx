@@ -20,6 +20,7 @@ import { apiClient } from "@/lib/api-client";
 import { Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { mapToBackendPaymentMethod } from "@/lib/payment-methods";
 
 interface Product {
   id: string;
@@ -87,12 +88,12 @@ export default function CheckoutPage() {
           quantity: item.quantity,
           price: item.price,
         })),
-        paymentMethod: paymentMethod.toLowerCase(),
+        paymentMethod: mapToBackendPaymentMethod(paymentMethod as "CASH" | "CARD" | "QRIS"),
       };
 
-      const result = await apiClient.post<{ snapToken?: string }>("/api/v1/checkout", payload);
+      const result = await apiClient.post<{ snapToken?: string }>("/api/v1/transactions", payload);
 
-      if (paymentMethod === "QRIS" || paymentMethod === "Card") {
+      if (paymentMethod === "QRIS" || paymentMethod === "CARD") {
         if (result.snapToken) {
           // @ts-expect-error Snap is provided by Midtrans script in layout/head
           window.snap.pay(result.snapToken, {
@@ -245,14 +246,14 @@ export default function CheckoutPage() {
           <PaymentMethod
             icon={Banknote}
             label="Cash"
-            selected={paymentMethod === "Cash"}
-            onClick={() => setPaymentMethod("Cash")}
+            selected={paymentMethod === "CASH"}
+            onClick={() => setPaymentMethod("CASH")}
           />
           <PaymentMethod
             icon={CreditCard}
             label="Card"
-            selected={paymentMethod === "Card"}
-            onClick={() => setPaymentMethod("Card")}
+            selected={paymentMethod === "CARD"}
+            onClick={() => setPaymentMethod("CARD")}
           />
           <PaymentMethod
             icon={QrCode}
