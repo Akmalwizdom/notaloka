@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { db, type LocalProduct } from "@/lib/db";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ export function useSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
 
-  const syncProducts = async () => {
+  const syncProducts = useCallback(async () => {
     try {
       const products = await apiClient.get<LocalProduct[]>("/api/v1/products");
       await db.products.clear();
@@ -21,14 +21,14 @@ export function useSync() {
           stock: p.stock,
           categoryId: p.categoryId,
           updatedAt: p.updatedAt,
-        }))
+        })),
       );
     } catch (error) {
       console.error("Failed to sync products to local DB", error);
     }
-  };
+  }, []);
 
-  const syncTransactions = async () => {
+  const syncTransactions = useCallback(async () => {
     const pendingTransactions = await db.transactions
       .where("isSynced")
       .equals(0)
@@ -62,7 +62,7 @@ export function useSync() {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // Initial sync
@@ -84,7 +84,7 @@ export function useSync() {
       clearInterval(interval);
       window.removeEventListener("online", handleOnline);
     };
-  }, []);
+  }, [syncProducts, syncTransactions]);
 
   return { isSyncing, lastSyncAt, syncTransactions, syncProducts };
 }
