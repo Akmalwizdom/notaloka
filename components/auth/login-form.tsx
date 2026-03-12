@@ -24,8 +24,8 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid business email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().email("Masukkan alamat email yang benar"),
+  password: z.string().min(8, "Kata sandi minimal 8 karakter"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -49,17 +49,19 @@ export function LoginForm() {
       const { error } = await signIn.email({
         email: data.email,
         password: data.password,
-        callbackURL: "/",
+        callbackURL: "/dashboard",
       });
 
       if (error) {
-        toast.error(error.message || "Invalid credentials. Please try again.");
+        toast.error("Email atau kata sandi salah. Silakan coba lagi.");
       } else {
-        toast.success("Welcome back to Notaloka!");
-        router.push("/");
+        toast.success("Selamat datang kembali di Notaloka!");
+        router.push("/dashboard");
       }
     } catch {
-      toast.error("A connection error occurred. Please try again.");
+      toast.error(
+        "Gagal terhubung. Periksa koneksi internet kamu dan coba lagi.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -73,21 +75,21 @@ export function LoginForm() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
+          <CardTitle>Selamat Datang Kembali</CardTitle>
           <CardDescription>
-            Enter your credentials to access your business dashboard.
+            Masuk ke akun kamu dan mulai kelola penjualan hari ini.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Work Email</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-brand transition-colors" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@company.com"
+                  placeholder="contoh@email.com"
                   className="pl-10"
                   {...register("email")}
                 />
@@ -101,12 +103,12 @@ export function LoginForm() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Security Token</Label>
+                <Label htmlFor="password">Kata Sandi</Label>
                 <Link
                   href="/forgot-password"
                   className="text-xs text-brand hover:underline font-medium"
                 >
-                  Forgot access?
+                  Lupa kata sandi?
                 </Link>
               </div>
               <div className="relative group">
@@ -143,15 +145,15 @@ export function LoginForm() {
               className="w-full text-base font-semibold h-12"
               isLoading={isLoading}
             >
-              Initialize Session <ArrowRight className="ml-2 h-4 w-4" />
+              Masuk <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <p className="text-center text-sm text-slate-400">
-              New to Notaloka?{" "}
+              Belum punya akun?{" "}
               <Link
                 href="/register"
                 className="text-brand font-semibold hover:underline"
               >
-                Request Access
+                Daftar di sini
               </Link>
             </p>
           </CardFooter>

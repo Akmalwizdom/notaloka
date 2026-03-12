@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           Notaloka<span className="text-brand">.</span>
         </h1>
         <p className="text-slate-400 text-sm mt-2 font-medium">
-          Premium Business Intelligence Suite
+          Kelola usaha & penjualan dengan mudah
         </p>
       </div>
 

@@ -24,9 +24,9 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid business email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  name: z.string().min(2, "Nama minimal 2 karakter"),
+  email: z.string().email("Masukkan alamat email yang benar"),
+  password: z.string().min(8, "Kata sandi minimal 8 karakter"),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -51,17 +51,19 @@ export function RegisterForm() {
         email: data.email,
         password: data.password,
         name: data.name,
-        callbackURL: "/",
+        callbackURL: "/dashboard",
       });
 
       if (error) {
-        toast.error(error.message || "Registration failed. Please try again.");
+        toast.error("Pendaftaran gagal. Silakan coba lagi.");
       } else {
-        toast.success("Account created successfully. Welcome to Notaloka!");
-        router.push("/");
+        toast.success("Akun berhasil dibuat. Selamat datang di Notaloka!");
+        router.push("/dashboard");
       }
     } catch {
-      toast.error("A connection error occurred during registration.");
+      toast.error(
+        "Gagal terhubung. Periksa koneksi internet kamu dan coba lagi.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -75,20 +77,20 @@ export function RegisterForm() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Create enterprise account</CardTitle>
+          <CardTitle>Buat Akun Baru</CardTitle>
           <CardDescription>
-            Join the elite businesses using Notaloka today.
+            Daftarkan diri kamu dan mulai kelola bisnis dengan lebih mudah.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name">Nama Lengkap</Label>
               <div className="relative group">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-brand transition-colors" />
                 <Input
                   id="name"
-                  placeholder="John Doe"
+                  placeholder="Nama kamu"
                   className="pl-10"
                   {...register("name")}
                 />
@@ -101,13 +103,13 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Work Email</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-brand transition-colors" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@company.com"
+                  placeholder="contoh@email.com"
                   className="pl-10"
                   {...register("email")}
                 />
@@ -120,7 +122,7 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Security Token</Label>
+              <Label htmlFor="password">Kata Sandi</Label>
               <div className="relative group">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-brand transition-colors" />
                 <Input
@@ -155,15 +157,15 @@ export function RegisterForm() {
               className="w-full text-base font-semibold h-12"
               isLoading={isLoading}
             >
-              Sign Up <UserPlus className="ml-2 h-4 w-4" />
+              Daftar Sekarang <UserPlus className="ml-2 h-4 w-4" />
             </Button>
             <p className="text-center text-sm text-slate-400">
-              Already have an account?{" "}
+              Sudah punya akun?{" "}
               <Link
                 href="/login"
                 className="text-brand font-semibold hover:underline"
               >
-                Sign In
+                Masuk di sini
               </Link>
             </p>
           </CardFooter>
