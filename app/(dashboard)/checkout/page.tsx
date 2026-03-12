@@ -25,12 +25,13 @@ import { mapToBackendPaymentMethod } from "@/lib/payment-methods";
 interface Product {
   id: string;
   name: string;
-  price: number;
+  price: number | string; // Prisma Decimal serializes to string via JSON
   category: { name: string };
   image?: string;
 }
 
-interface CartItem extends Product {
+interface CartItem extends Omit<Product, "price"> {
+  price: number; // always normalized to number when added to cart
   quantity: number;
 }
 
@@ -59,7 +60,10 @@ export default function CheckoutPage() {
             : item,
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [
+        ...prev,
+        { ...product, price: parseFloat(String(product.price)), quantity: 1 },
+      ];
     });
   };
 
@@ -86,17 +90,21 @@ export default function CheckoutPage() {
         items: cart.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
-          price: item.price,
+          priceAtRecord: item.price,
         })),
-        paymentMethod: mapToBackendPaymentMethod(paymentMethod as "CASH" | "CARD" | "QRIS"),
+        paymentMethod: mapToBackendPaymentMethod(
+          paymentMethod as "CASH" | "CARD" | "QRIS",
+        ),
       };
 
-      const result = await apiClient.post<{ snapToken?: string }>("/api/v1/transactions", payload);
+      const result = await apiClient.post<{
+        payment?: { token: string; redirect_url: string };
+      }>("/api/v1/transactions", payload);
 
       if (paymentMethod === "QRIS" || paymentMethod === "CARD") {
-        if (result.snapToken) {
+        if (result.payment?.token) {
           // @ts-expect-error Snap is provided by Midtrans script in layout/head
-          window.snap.pay(result.snapToken, {
+          window.snap.pay(result.payment.token, {
             onSuccess: () => {
               toast.success("Payment successful!");
               setCart([]);

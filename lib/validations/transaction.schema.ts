@@ -4,7 +4,7 @@ import { PaymentMethod } from "@prisma/client";
 export const TransactionItemSchema = z.object({
   productId: z.string(),
   quantity: z.number().int().positive(),
-  priceAtRecord: z.number().positive(),
+  priceAtRecord: z.coerce.number().positive(),
 });
 
 export const CheckoutSchema = z.object({
