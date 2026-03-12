@@ -79,7 +79,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         disabled={isLoading || props.disabled}
-        {...(props as any)}
+        {...(props as React.ComponentPropsWithoutRef<typeof motion.button>)}
       >
         {isLoading ? (
           <>

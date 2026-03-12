@@ -58,7 +58,7 @@ export class SyncService {
 
         results.success.push(tx.id);
       } catch (error: unknown) {
-        const err = error as any;
+        const err = error as Error;
         console.error(`[Sync Error] Transaction ${tx.id}:`, err);
         results.failed.push({
           id: tx.id,

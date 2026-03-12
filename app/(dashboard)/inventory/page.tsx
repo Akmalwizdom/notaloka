@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { BentoCard } from "@/components/ui/bento-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +8,6 @@ import {
   Search,
   Filter,
   Plus,
-  MoreHorizontal,
   ArrowUpDown,
   AlertCircle,
   Pencil,

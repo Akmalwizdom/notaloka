@@ -8,7 +8,6 @@ import {
   ReceiptText,
   Search,
   Download,
-  Calendar,
   Loader2,
   AlertCircle,
   Eye,
@@ -41,7 +40,7 @@ export default function TransactionsPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data: transactions, isLoading, error } = useQuery({
+  const { data: transactions, isLoading } = useQuery({
     queryKey: ["transactions", searchQuery, statusFilter, paymentFilter, dateFrom, dateTo],
     queryFn: async () => {
       const params = new URLSearchParams();

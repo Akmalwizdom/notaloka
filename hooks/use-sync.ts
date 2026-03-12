@@ -13,7 +13,7 @@ export function useSync() {
     try {
       const products = await apiClient.get<LocalProduct[]>("/api/v1/products");
       await db.products.clear();
-      await db.products.bulkAdd(
+      await db.products.bulkPut(
         products.map((p) => ({
           id: p.id,
           name: p.name,
