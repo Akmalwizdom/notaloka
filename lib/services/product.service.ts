@@ -1,9 +1,18 @@
 import prisma from "@/lib/prisma";
 import { CreateProductInput, UpdateProductInput } from "../validations/product.schema";
 
+/** Convert Prisma Decimal fields to plain numbers so data is serialisable across the RSC boundary. */
+function serialize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data, (_key, value) =>
+    typeof value === "object" && value !== null && value.constructor?.name === "Decimal"
+      ? Number(value)
+      : value
+  ));
+}
+
 export class ProductService {
   static async getAll() {
-    return await prisma.product.findMany({
+    const products = await prisma.product.findMany({
       include: {
         category: true,
       },
@@ -11,34 +20,39 @@ export class ProductService {
         name: "asc",
       },
     });
+    return serialize(products);
   }
 
   static async getById(id: string) {
-    return await prisma.product.findUnique({
+    const product = await prisma.product.findUnique({
       where: { id },
       include: {
         category: true,
       },
     });
+    return product ? serialize(product) : null;
   }
 
   static async getBySku(sku: string) {
-    return await prisma.product.findUnique({
+    const product = await prisma.product.findUnique({
       where: { sku },
     });
+    return product ? serialize(product) : null;
   }
 
   static async create(data: CreateProductInput) {
-    return await prisma.product.create({
+    const product = await prisma.product.create({
       data,
     });
+    return serialize(product);
   }
 
   static async update(id: string, data: UpdateProductInput) {
-    return await prisma.product.update({
+    const product = await prisma.product.update({
       where: { id },
       data,
     });
+    return serialize(product);
   }
 
   static async delete(id: string) {
@@ -48,7 +62,7 @@ export class ProductService {
   }
 
   static async search(query: string) {
-    return await prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: {
         OR: [
           { name: { contains: query, mode: "insensitive" } },
@@ -59,5 +73,6 @@ export class ProductService {
         category: true,
       },
     });
+    return serialize(products);
   }
 }

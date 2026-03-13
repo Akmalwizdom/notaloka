@@ -33,37 +33,39 @@ export class ReportService {
     return parseFloat((((current - previous) / previous) * 100).toFixed(1));
   }
 
+  /**
+   * OPTIMIZED: Uses aggregate queries instead of loading all transaction rows into memory.
+   * Before: findMany({ include: { items: true } }) → O(n) memory
+   * After:  aggregate() + aggregate() → O(1) memory, single round-trip each
+   */
   private static async fetchPeriodData(
     start: Date,
     end: Date,
   ): Promise<PeriodData> {
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end,
+    const transactionWhere = {
+      createdAt: { gte: start, lte: end },
+      status: "PAID" as const,
+    };
+
+    const [revenueAgg, itemAgg] = await Promise.all([
+      prisma.transaction.aggregate({
+        where: transactionWhere,
+        _sum: { totalAmount: true },
+        _count: { id: true },
+      }),
+      prisma.transactionItem.aggregate({
+        where: {
+          transaction: transactionWhere,
         },
-        status: "PAID",
-      },
-      include: {
-        items: true,
-      },
-    });
+        _sum: { quantity: true },
+      }),
+    ]);
 
-    const revenue = transactions.reduce(
-      (acc, curr) => acc + Number(curr.totalAmount),
-      0,
-    );
-
-    const transactionCount = transactions.length;
-
-    const itemCount = transactions.reduce(
-      (acc, curr) =>
-        acc + curr.items.reduce((sum, item) => sum + item.quantity, 0),
-      0,
-    );
-
-    return { revenue, transactionCount, itemCount };
+    return {
+      revenue: Number(revenueAgg._sum.totalAmount ?? 0),
+      transactionCount: revenueAgg._count.id,
+      itemCount: Number(itemAgg._sum.quantity ?? 0),
+    };
   }
 
   static async getSalesReport(
@@ -94,7 +96,6 @@ export class ReportService {
   static async getDailyReport(): Promise<SalesReport> {
     const today = new Date();
     const yesterday = subDays(today, 1);
-
     return this.getSalesReport(
       startOfDay(today),
       endOfDay(today),
@@ -106,7 +107,6 @@ export class ReportService {
   static async getMonthlyReport(): Promise<SalesReport> {
     const today = new Date();
     const lastMonth = subMonths(today, 1);
-
     return this.getSalesReport(
       startOfMonth(today),
       endOfMonth(today),
@@ -115,53 +115,65 @@ export class ReportService {
     );
   }
 
+  /**
+   * OPTIMIZED: Eliminates N+1 query pattern.
+   * Before: 1 groupBy + N findUnique (one per product) = N+1 round-trips
+   * After:  1 groupBy + 1 findMany (all products at once) = 2 round-trips
+   */
   static async getTopProducts(limit: number = 5) {
     const topItems = await prisma.transactionItem.groupBy({
       by: ["productId"],
-      _sum: {
-        quantity: true,
-      },
-      orderBy: {
-        _sum: {
-          quantity: "desc",
-        },
-      },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
       take: limit,
     });
 
-    const productsWithDetails = await Promise.all(
-      topItems.map(
-        async (item: {
-          productId: string;
-          _sum: { quantity: number | null };
-        }) => {
-          const product = await prisma.product.findUnique({
-            where: { id: item.productId },
-            select: { id: true, name: true, sku: true },
-          });
-          return {
-            ...product,
-            totalSold: item._sum.quantity ?? 0,
-          };
-        },
-      ),
-    );
+    if (topItems.length === 0) return [];
 
-    return productsWithDetails;
+    // Single batch query instead of N individual findUnique calls
+    const productIds = topItems.map((item) => item.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, sku: true },
+    });
+
+    // O(1) lookup map
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    return topItems.map((item) => ({
+      ...productMap.get(item.productId),
+      totalSold: item._sum.quantity ?? 0,
+    }));
   }
 
   static async getSummary() {
     const today = new Date();
     const yesterday = subDays(today, 1);
 
+    const todayRange = { start: startOfDay(today), end: endOfDay(today) };
+    const yesterdayRange = {
+      start: startOfDay(yesterday),
+      end: endOfDay(yesterday),
+    };
+
     const [todayData, yesterdayData, recentTransactions] = await Promise.all([
-      this.fetchPeriodData(startOfDay(today), endOfDay(today)),
-      this.fetchPeriodData(startOfDay(yesterday), endOfDay(yesterday)),
+      this.fetchPeriodData(todayRange.start, todayRange.end),
+      this.fetchPeriodData(yesterdayRange.start, yesterdayRange.end),
       prisma.transaction.findMany({
         take: 5,
         orderBy: { createdAt: "desc" },
-        include: {
-          items: true,
+        select: {
+          id: true,
+          paymentMethod: true,
+          totalAmount: true,
+          status: true,
+          items: {
+            select: {
+              productId: true,
+              quantity: true,
+              priceAtRecord: true,
+            },
+          },
         },
       }),
     ]);

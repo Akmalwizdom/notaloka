@@ -3,7 +3,12 @@ import { ReportService } from "@/lib/services/report.service";
 
 export const GET = wrapHandler(async (req: Request) => {
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type") || "daily";
+  const type = searchParams.get("type") ?? "summary";
+
+  if (type === "summary") {
+    const report = await ReportService.getSummary();
+    return successResponse(report);
+  }
 
   if (type === "daily") {
     const report = await ReportService.getDailyReport();
